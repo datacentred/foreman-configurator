@@ -1,0 +1,5 @@
+#!/usr/bin/ruby
+
+require foreman-configurator
+
+ForemanConfigurator.run!

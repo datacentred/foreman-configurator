@@ -95,6 +95,35 @@ module ForemanConfigurator
       JSON.parse(res.body)
     end
 
+    # Perform a HTTP PUT query against the API
+    # Consumes native data which is translated to JSON before
+    # being sent to the server
+    def put(path, data)
+      uri = URI("#{@config['endpoint']}#{path}")
+
+      req = Net::HTTP::Put.new(uri)
+      req.basic_auth(@config['username'], @config['password'])
+      req['Content-Type'] = 'application/json'
+      req.body = JSON.generate(data)
+
+      opt = {
+        use_ssl: true,
+        ca_file: @config['cacert'],
+        cert: OpenSSL::X509::Certificate.new(File.read(@config['cert'])),
+        key: OpenSSL::PKey::RSA.new(File.read(@config['key'])),
+      }
+
+      res = Net::HTTP.start(uri.hostname, uri.port, opt) do |http|
+        http.request(req)
+      end
+
+      unless res.kind_of?(Net::HTTPSuccess)
+        raise RuntimeError.new("Unexpected code #{res.code}: #{res.body}")
+      end
+
+      JSON.parse(res.body)
+    end
+
     # Perform a HTTP DELETE query against the API
     def delete(path)
       uri = URI("#{@config['endpoint']}#{path}")

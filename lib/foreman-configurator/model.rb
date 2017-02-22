@@ -6,7 +6,7 @@ module ForemanConfigurator
     attr_accessor :attributes
 
     def initialize(init={})
-      # Translate initialization data keys to symbols
+      # Translate initialization data keys to symbols: handles raw tainted input from foreman
       init = init.map{|k, v| [k.to_sym, v]}.to_h
       # Select whitelisted attributes from the initial data
       @attributes = init.select{|attr| self.class.attributes_get.include?(attr)}

@@ -13,13 +13,13 @@ module ForemanConfigurator
     resources = klass.all
 
     # For each managed resource
-    @@config[config].each do |name, params|
+    @@config[config].each do |_, params|
       # Look for an existing version
-      resource = resources.find{|x| x.get(:name) == name}
+      resource = resources.find{|x| x.get(:name) == params[:name]}
 
       # If it doesn't exist create it
       unless resource
-        resource = klass.new({name: name})
+        resource = klass.new
         resource.created = true
         resources << resource
       end

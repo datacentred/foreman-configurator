@@ -1,15 +1,14 @@
 require 'foreman-configurator/model'
-require 'foreman-configurator/collector'
 
 module ForemanConfigurator
   module Models
     class TemplateKind
-      include ForemanConfigurator::Model
-      extend ForemanConfigurator::Collector
+      include ForemanConfigurator::Model::Attributes
+      include ForemanConfigurator::Model::Backend::Common
+      include ForemanConfigurator::Model::Backend::Collector
 
-      path '/api/template_kinds'
       attributes :name, :id
-
+      parameters :template_kind
     end
   end
 end

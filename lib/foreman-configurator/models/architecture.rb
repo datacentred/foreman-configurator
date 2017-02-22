@@ -1,18 +1,14 @@
 require 'foreman-configurator/model'
+require 'foreman-configurator/collector'
 
 module ForemanConfigurator
   module Models
     class Architecture
       include ForemanConfigurator::Model
+      extend ForemanConfigurator::Collector
 
       path '/api/architectures'
       attributes :name, :id
-
-      # Return all architecture resources on the server
-      def self.all
-        resources = ForemanConfigurator.connection.get(path_get, true)
-        resources.map{|x| Architecture.new(x)}
-      end
 
       # Commit the new resource to the server
       def commit

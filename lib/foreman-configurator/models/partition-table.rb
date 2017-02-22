@@ -1,23 +1,14 @@
 require 'foreman-configurator/model'
+require 'foreman-configurator/collector-deep'
 
 module ForemanConfigurator
   module Models
     class PartitionTable
       include ForemanConfigurator::Model
+      extend ForemanConfigurator::CollectorDeep
 
       path '/api/ptables'
       attributes :name, :id, :os_family, :layout
-
-      # Return all partition table resources on the server
-      # This is a two stage lookup as listing doesn't return the
-      # actual layout
-      def self.all
-        resources = ForemanConfigurator.connection.get(path_get, true)
-        resources.map do |resource|
-          pt = ForemanConfigurator.connection.get("#{path_get}/#{resource['id']}")
-          PartitionTable.new(pt)
-        end
-      end
 
       # Commit the new resource to the server
       def commit

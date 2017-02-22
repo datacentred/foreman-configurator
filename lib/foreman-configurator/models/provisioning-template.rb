@@ -1,9 +1,11 @@
 require 'foreman-configurator/model'
+require 'foreman-configurator/collector-deep'
 
 module ForemanConfigurator
   module Models
     class ProvisioningTemplate
       include ForemanConfigurator::Model
+      extend ForemanConfigurator::CollectorDeep
 
       path '/api/config_templates'
       attributes :name, :id, :snippet, :template_kind_id, :template, :locked
@@ -14,8 +16,7 @@ module ForemanConfigurator
       def self.all
         resources = ForemanConfigurator.connection.get(path_get, true)
         resources.map do |resource|
-          pt = ForemanConfigurator.connection.get("#{path_get}/#{resource['id']}")
-          ProvisioningTemplate.new(pt)
+          new(ForemanConfigurator.connection.get("#{path_get}/#{resource['id']}"))
         end
       end
 

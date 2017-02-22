@@ -1,3 +1,5 @@
+require 'active_support/inflector'
+
 module ForemanConfigurator
   module Model
     # Attributes are mutable parameters associated with a resource
@@ -61,7 +63,7 @@ module ForemanConfigurator
           end
 
           def uri(*path)
-            path.unshift("/api/#{@noun}s").join('/')
+            path.unshift('/api/' + @noun.to_s.pluralize).join('/')
           end
 
           def noun

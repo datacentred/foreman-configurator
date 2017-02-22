@@ -4,6 +4,7 @@ require 'foreman-configurator/models/architecture'
 require 'foreman-configurator/models/partition-table'
 require 'foreman-configurator/models/template-kind'
 require 'foreman-configurator/models/provisioning-template'
+require 'foreman-configurator/models/medium'
 
 module ForemanConfigurator
   def self.connection
@@ -76,5 +77,8 @@ module ForemanConfigurator
 
     # Install provisioning templates
     update_resources('provisioning_templates', ForemanConfigurator::Models::ProvisioningTemplate)
+
+    # Install media
+    update_resources('media', ForemanConfigurator::Models::Medium)
   end
 end

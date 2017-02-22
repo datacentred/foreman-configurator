@@ -21,6 +21,7 @@ begin automated provisioning.
     gem install fpm
     gem build foreman-configurator.gemspec
     fpm -s gem -t deb \
+      --depends ruby-activesupport \
       --gem-package-name-prefix ruby \
       foreman-configurator-x.y.z.gem
 

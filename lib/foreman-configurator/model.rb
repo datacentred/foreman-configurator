@@ -2,16 +2,35 @@ require 'active_support/inflector'
 
 module ForemanConfigurator
   module Model
+
     # Attributes are mutable parameters associated with a resource
-    # * A whitelist of class instance variables defines which attributes we
-    #   will accept from Foreman or configuration
-    # * Attributes are stored as a hash whose keys are always symbols
-    #   and can be used directly as a POST/PUT query against the Foreman API
+    #
+    # A whitelist of class instance variables defines which attributes we
+    # will accept from Foreman or configuration.Attributes are stored as a
+    # hash whose keys are always symbols and can be used directly as a
+    # POST/PUT query against the Foreman API.
+
     module Attributes
+
+      # Has the instance been updated and needs to be updated in Foreman
       attr_accessor :modified
+
+      # Is the instance managed e.g. defined in configuration or set manually.
+      # This is used to judge whether to purge an exising resource or not
       attr_accessor :managed
+
+      # Has this instance been newly created.  Used to determine whether to
+      # POST or PUT this request via the API
       attr_accessor :created
+
+      # Hash of all attributes and their values.  Keys are symbols
       attr_accessor :attributes
+
+      # Default model contructor
+      #
+      # Applies to all models.  It may accept a hash of initial values which
+      # will set any attributes defined for that class.  It also converts
+      # tainted API input so that hash keys are symbols.
 
       def initialize(init={})
         # Translate initialization data keys to symbols: handles raw tainted input from foreman
@@ -24,29 +43,51 @@ module ForemanConfigurator
         @created = false
       end
 
+      # Get the resource title
+      #
+      # Defaults to the model's name attribute, however things like operating
+      # systems don't have unique names, and instead generate a composite title
+      # from other attributes.  This is intended to be overriden at the concrete
+      # model level if so desired.
+
       def title
         get(:name)
       end
 
+      # Get an attribute
+
       def get(attr)
-        attr = attr.to_sym
         @attributes[attr]
       end
 
+      # Set an attribute
+      #
+      # Outside of initization setting an attribute will check to see if there
+      # is an existing value and it matches what the intended value is set to
+      # be.  If not then the value is updated and the instance flagged as
+      # modified and in need of being created or updated.  Inhibits the setting
+      # of attributes which are not white-listed.
+
       def set(attr, new)
-        attr = attr.to_sym
+        return unless self.class.attributes_get.include?(attr)
+
         old = get(attr)
         if old.nil? || old != new
+          @attributes[attr] = new
           @modified = true
         end
-        @attributes[attr] = new
       end
 
       module ClassMethods
+        # Set the white-listed set of attributes that will be set from raw
+        # data from the Foreman API
+
         def attributes(*attr)
           @whitelist ||= []
           @whitelist += attr
         end
+
+        # Get the attribute white-list
 
         def attributes_get
           @whitelist
@@ -59,9 +100,14 @@ module ForemanConfigurator
     end
 
     module Backend
+
       # Common backend requirements for each resource type
-      # * Caches the Foreman API URI path for use by collectors and commiters
+      #
+      # Accepts a noun describing the resource.  This is used to pack
+      # POST and PUT requests verbatim, and generate API queries
+
       module Common
+
         module ClassMethods
           def parameters(noun)
             @noun = noun
@@ -82,8 +128,10 @@ module ForemanConfigurator
       end
 
       # Basic collector
-      # * Returns a list of all resources found via the API
-      # * All attributes are returned by a simple list operation
+      #
+      # Returns a list of all resources found via the API where all attributes are
+      # returned by a simple list operation
+
       module Collector
         module ClassMethods
           def all
@@ -103,9 +151,10 @@ module ForemanConfigurator
       end
 
       # Deep collector
-      # * Returns a list of all resources found via the API
-      # * All attributes are returned by an API lookup of a specific resource ID
-      #   and not via a simple list operation
+      #
+      # Returns a list of all resources found via the API where all attributes are returned by
+      # an API lookup of a specific resource ID and not via a simple list operation.
+
       module CollectorDeep
         module ClassMethods
           def all
@@ -126,7 +175,12 @@ module ForemanConfigurator
       end
 
       # Emitter
-      # * Sets the resource via the API
+      #
+      # Sets or purges a resource via the API.  Dynamically selects POST or PUT
+      # based on whether the resource needs to be created or updated.  Resource IDs
+      # are updated on the instance as they are created on resource creation.  This
+      # facilitates resource caching.
+
       module Emitter
         def commit
           data = {self.class.noun => attributes}
@@ -141,7 +195,6 @@ module ForemanConfigurator
           set(:id, res['id'])
         end
 
-        # Delete a resource from the server
         def delete
           ForemanConfigurator.connection.delete(self.class.uri(get('id')))
         end

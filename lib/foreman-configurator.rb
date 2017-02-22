@@ -8,9 +8,23 @@ require 'foreman-configurator/models/medium'
 require 'foreman-configurator/models/operatingsystem'
 
 module ForemanConfigurator
+
+  # Allow the global connection object to be accessed by backends
+
   def self.connection
     @@connection
   end
+
+  # Perform a recursive parse of the configuration data.
+  #
+  # This replaces references to files with their contents, and resource references
+  # dynamically get all resources of a specific class and select a specific
+  # attribute from a named resource.  Ordered data structures i.e. arrays are sorted
+  # to handle attribute comparison correctly.  Hashes have their keys translated into
+  # symbols for use by model set methods
+  #
+  # Note that you will need to munge tainted data direct from the API to also handle
+  # ordering correctly.
 
   def self.configure_dynamic(config)
     case config
@@ -33,6 +47,19 @@ module ForemanConfigurator
       config
     end
   end
+
+  # Gather and update resources
+  #
+  # Main algorithm of the configurator.  For each model defined we first fetch all
+  # instances from the API.  Next we look at each resource for that type defined
+  # in the configuration.  If the named resource does not exist it is created. The
+  # new or existing resource has all attributes in the configuration applied to it.
+  # Finally any resources that have been modified (by application of configuration
+  # data) are committed, either creating an new resource or updating an existing one.
+  # Any unmanaged resources are automatically purged from Foreman.
+  #
+  # Any remaining managed resources are returned with the intention of being
+  # cached.
 
   def self.update_resources(config, klass)
     # Get all existing resources
@@ -78,6 +105,14 @@ module ForemanConfigurator
     # Return the managed resources
     resources.select(&:managed)
   end
+
+  # Application entry point
+  #
+  # Parses the configuration and stores it in a module variable for access
+  # from other sources.  An API connection object is intialized which points
+  # to the Foreman endpoint.  Finally for each resource we care about update
+  # them, in order, based on the configuration for that specific resource
+  # type
 
   def self.run!
     # Load the configuration file and prevent modification

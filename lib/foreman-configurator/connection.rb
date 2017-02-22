@@ -6,6 +6,7 @@ module ForemanConfigurator
   class Connection
 
     # Checks parameters and cache away the configuration
+
     def initialize(config)
       unless config['api']['endpoint']
         raise ArgumentError.new('API endpoint required')
@@ -29,8 +30,10 @@ module ForemanConfigurator
     end
 
     # Perform a HTTP GET query against the API
+    #
     # Parse the JSON output, check that we haven't got too many
     # resources then return the results only
+
     def get(path, paged=false, results=1000)
       uri = "#{@config['endpoint']}#{path}"
       uri += "?per_page=#{results}" if paged
@@ -67,8 +70,10 @@ module ForemanConfigurator
     end
 
     # Perform a HTTP POST query against the API
+    #
     # Consumes native data which is translated to JSON before
     # being sent to the server
+
     def post(path, data)
       uri = URI("#{@config['endpoint']}#{path}")
 
@@ -96,8 +101,10 @@ module ForemanConfigurator
     end
 
     # Perform a HTTP PUT query against the API
+    #
     # Consumes native data which is translated to JSON before
     # being sent to the server
+
     def put(path, data)
       uri = URI("#{@config['endpoint']}#{path}")
 
@@ -125,6 +132,7 @@ module ForemanConfigurator
     end
 
     # Perform a HTTP DELETE query against the API
+
     def delete(path)
       uri = URI("#{@config['endpoint']}#{path}")
 

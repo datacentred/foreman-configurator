@@ -24,6 +24,10 @@ module ForemanConfigurator
         @created = false
       end
 
+      def title
+        get(:name)
+      end
+
       def get(attr)
         attr = attr.to_sym
         @attributes[attr]
@@ -40,7 +44,8 @@ module ForemanConfigurator
 
       module ClassMethods
         def attributes(*attr)
-          @whitelist = attr
+          @whitelist ||= []
+          @whitelist += attr
         end
 
         def attributes_get
@@ -83,7 +88,12 @@ module ForemanConfigurator
         module ClassMethods
           def all
             resources = ForemanConfigurator.connection.get(uri, true)
-            resources.map{|x| new(x)}
+            resources.map do |x|
+              if respond_to?(:munge)
+                x = munge(x)
+              end
+              new(x)
+            end
           end
         end
 
@@ -101,7 +111,11 @@ module ForemanConfigurator
           def all
             resources = ForemanConfigurator.connection.get(uri, true)
             resources.map do |resource|
-              new(ForemanConfigurator.connection.get(uri(resource['id'])))
+              x = ForemanConfigurator.connection.get(uri(resource['id']))
+              if respond_to?(:munge)
+                x = munge(x)
+              end
+              new(x)
             end
           end
         end

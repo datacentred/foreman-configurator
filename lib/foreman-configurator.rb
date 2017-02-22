@@ -5,10 +5,33 @@ require 'foreman-configurator/models/partition-table'
 require 'foreman-configurator/models/template-kind'
 require 'foreman-configurator/models/provisioning-template'
 require 'foreman-configurator/models/medium'
+require 'foreman-configurator/models/operatingsystem'
 
 module ForemanConfigurator
   def self.connection
     @@connection
+  end
+
+  def self.configure_dynamic(config)
+    case config
+    when String
+      if config.start_with?('file:///')
+        File.open(config[8..-1]).read
+      elsif config.start_with?('resource:///')
+        type, name, attribute = config[12..-1].split('/')
+        ext_resources = ForemanConfigurator::Models.const_get(type).all
+        ext_resource = ext_resources.find{|x| x.title == name}
+        ext_resource.get(attribute.to_sym)
+      else
+        config
+      end
+    when Array
+      config.map{|x| configure_dynamic(x)}.sort
+    when Hash
+      config.map{|k, v| [k.to_sym, configure_dynamic(v)]}.to_h
+    else
+      config
+    end
   end
 
   def self.update_resources(config, klass)
@@ -20,8 +43,15 @@ module ForemanConfigurator
 
     # For each managed resource
     @@config[config].each do |params|
+      # Annoyingly the 'name' of operating systems isn't unique like all
+      # the other resources.  Instead a composite title is composed of name,
+      # major and minor revisions.  The models are allowed to define their own
+      # titles.  Here we have to perform a minor hack with configuration
+      # processing
+      title = params[:title] || params[:name]
+
       # Look for an existing version
-      resource = resources.find{|x| x.get(:name) == params[:name]}
+      resource = resources.find{|x| x.title == title}
 
       # If it doesn't exist create it
       unless resource
@@ -30,20 +60,8 @@ module ForemanConfigurator
         resources << resource
       end
 
-      # Iterate over any parameters specified
-      params && params.each do |k, v|
-        # If it's a file reference load up that file as the value
-        if v.is_a?(String)
-          if v.start_with?('file:///')
-            v = File.open(v[8..-1]).read
-          elsif v.start_with?('resource:///')
-            type, name, attribute = v[12..-1].split('/')
-            ext_resources = ForemanConfigurator::Models.const_get(type).all
-            ext_resource = ext_resources.find{|x| x.get(:name) == name}
-            v = ext_resource.get(attribute.to_sym)
-          end
-        end
-        # And set the parameter value
+      # Iterate over any parameters specified updating the resource
+      configure_dynamic(params).each do |k, v|
         resource.set(k, v)
       end
 
@@ -69,16 +87,15 @@ module ForemanConfigurator
     # Create a global connection object to be used by the models
     @@connection = Connection.new(@@config)
 
-    # Install architectures
-    update_resources('architectures', ForemanConfigurator::Models::Architecture)
-
-    # Install partiton tables
-    update_resources('partition_tables', ForemanConfigurator::Models::PartitionTable)
-
-    # Install provisioning templates
-    update_resources('provisioning_templates', ForemanConfigurator::Models::ProvisioningTemplate)
-
-    # Install media
-    update_resources('media', ForemanConfigurator::Models::Medium)
+    # Define the mapping of configuration items to models then perform
+    # updates in order
+    config_mapping = {
+      'architectures'          => ForemanConfigurator::Models::Architecture,
+      'partition_tables'       => ForemanConfigurator::Models::PartitionTable,
+      'provisioning_templates' => ForemanConfigurator::Models::ProvisioningTemplate,
+      'media'                  => ForemanConfigurator::Models::Medium,
+      'operating_systems'      => ForemanConfigurator::Models::OperatingSystem,
+    }
+    config_mapping.each{|k, v| update_resources(k, v)}
   end
 end

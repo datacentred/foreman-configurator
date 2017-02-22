@@ -1,0 +1,54 @@
+set -x
+
+# Handle our whacky network configurations
+apt-get -y install ifenslave vlan
+# Required for ipmi_user puppet function
+apt-get -y install ipmitool openipmi
+# Required for apt to work
+apt-get -y install apt-transport-https
+# Required to do any useful debug
+apt-get -y install gdb
+# Required for auto package updates
+apt-get -y install update-notifier-common
+
+# Hopefully allows puppet to work first time around!
+apt-get -y install language-pack-en  # Ensure the correct packages are present
+locale-gen                           # Ensure the locales are generated if the previous step didn't run
+cat > /etc/default/locale <<EOF      # Update the system locales
+LANG="en_GB.utf8"
+LANGUAGE="en_GB.utf8"
+EOF
+
+# Hack hack hack
+apt-get -y install linux-image-generic-lts-xenial
+
+# Hack hack hack (remove when icinga2 live and SSL fully migrated)
+mkdir -p /var/lib/puppet
+ln -s /etc/puppetlabs/puppet/ssl /var/lib/puppet
+
+PUPPET=/opt/puppetlabs/bin/puppet
+
+cat > /etc/puppetlabs/puppet/puppet.conf << EOF
+<%= snippets "puppet.conf" %>
+EOF
+
+cat > /etc/network/interfaces << EOF
+<%= snippets "interfaces" %>
+EOF
+
+<% if @host.hostgroup.to_s == "Ark/OpenStack/Compute" -%>
+<%= snippets "compute-storage" %>
+<% end -%>
+<% if @host.hostgroup.to_s == "Production/OpenStack/Data" || @host.hostgroup.to_s == "Core/Services/InfluxDB" -%>
+<%= snippets "data_part" %>
+<% end -%>
+<% if ["Ark/OpenStack/Compute"].include?(@host.hostgroup.to_s) -%>
+<%= snippets "grub_raid" %>
+<% end -%>
+# Additional RAID for MongoDB hosts in Ark
+# This should work for only 2 main disks as well
+<% if @host.hostgroup.to_s == "Ark/OpenStack/Telemetry" -%>
+<%= snippets "RAID1 for /srv" %>
+<% end -%>
+
+<%= snippets "common" %>

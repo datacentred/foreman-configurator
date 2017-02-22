@@ -1,0 +1,15 @@
+# Synchronise time before we attempt to do anything with Puppet
+/usr/sbin/ntpdate ntp0.<%= @host.domain %> ntp1.<%= @host.domain %>
+/sbin/hwclock --systohc
+
+if [ -f /etc/default/puppet ]
+then
+    /bin/sed -i 's/^START=no/START=yes/' /etc/default/puppet
+fi
+
+# For 16.06 and modern friends
+systemctl enable puppet
+
+$PUPPET agent --config /etc/puppetlabs/puppet/puppet.conf --onetime --tags no_such_tag --server <%= @host.puppetmaster %> --no-daemonize
+/usr/bin/wget --quiet --output-document=/dev/null --no-check-certificate <%= foreman_url('built') %>
+$PUPPET agent --enable

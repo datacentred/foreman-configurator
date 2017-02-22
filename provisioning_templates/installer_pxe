@@ -1,0 +1,9 @@
+<% if @host.operatingsystem.name == "Debian" -%>
+<% keyboard_params = "auto=true console-keymaps-at/keymap=gb keymap=gb domain=#{@host.domain}" -%>
+<% else -%>
+<% keyboard_params = "console-setup/ask_detect=false console-setup/layout=UK console-setup/variant=UK keyboard-configuration/layoutcode=uk" -%>
+<% end -%>
+default linux
+label linux
+kernel <%= @kernel %>
+append initrd=http://ns0.<%= @host.domain %>/<%= @initrd %> interface=auto debian-installer/allow_unauthenticated_ssl=true url=<%= foreman_url("provision")%> ramdisk_size=10800 <%= keyboard_params %> root=/dev/rd/0 rw auto hostname=<%= @host.name %> locale=en_GB

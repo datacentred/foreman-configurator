@@ -1,0 +1,96 @@
+auto lo
+iface lo inet loopback
+<% bonded_interfaces = [] -%>
+<% bond_macs = [] -%>
+<% bonds = @host.bond_interfaces -%>
+<% bonds.each do |bond| -%>
+<% bond_macs.push(bond.mac) -%>
+<% end -%>
+<% if @host.respond_to?(:has_primary_interface?) -%>
+<% unless bond_macs.include?(@host.mac) -%>
+<% subnet = @host.subnet -%>
+<% dhcp = subnet.dhcp_boot_mode? -%>
+auto <%= @host.primary_interface %>
+iface <%= @host.primary_interface %> inet <%= dhcp ? 'dhcp' : 'none' -%>
+<% unless dhcp -%>
+address <%= @host.ip -%>
+netmask <%= subnet.mask -%>
+<% end -%>
+<% end -%>
+<% end -%>
+
+<% bonds.each do |bond| -%>
+<% bond.attached_devices_identifiers.each do |interface| -%>
+<% bonded_interfaces.push(interface) -%>
+auto <%= interface %>
+iface <%= interface %> inet manual
+    bond-master <%= bond.identifier %>
+<% end -%>
+<%# SM: This isn't going to work for more than 2 devices %>
+    pre-up sleep 5
+<% subnet = bond.subnet -%>
+<% dhcp = subnet.nil? ? false : subnet.dhcp_boot_mode? -%>
+
+auto <%= bond.identifier %>
+iface <%= bond.identifier %> inet <%= dhcp ? 'dhcp' : 'static' %>
+<% unless dhcp || subnet.nil? -%>
+    address <%= bond.ip %>
+    netmask <%= subnet.mask %>
+<% if !subnet.gateway.nil? && !subnet.gateway.empty? -%>
+    gateway <%= subnet.gateway %>
+<% end -%>
+<% end -%>
+    bond-mode <%= bond.mode %>
+<%# SM: this option is deprectaed %>
+<% bond_slaves = bond.attached_devices_identifiers.join(' ') -%>
+    bond-slaves <%= bond_slaves %>
+<% options = bond.bond_options.split(' ') -%>
+<% options.each do |option| -%>
+<% key = option.split('=').first -%>
+<% value = option.split('=').last -%>
+    bond-<%= key %> <%= value %>
+<% end -%>
+<% end -%>
+
+<% @host.interfaces.each do |interface| -%>
+<% next if interface.subnet.nil? -%>
+<% next if interface.identifier.nil? -%>
+<% next if bonded_interfaces.include?(interface.identifier) -%>
+<% next if bond_macs.include?(interface.mac) -%>
+<% next if interface.identifier == 'ipmi' -%>
+<% subnet = interface.subnet -%>
+<% virtual = interface.virtual? -%>
+<% vlan = virtual && subnet.has_vlanid? -%>
+<% dhcp = subnet.dhcp_boot_mode? -%>
+<% if vlan && !interface.tag -%>
+<% real_if = interface.attached_to + '.' + subnet.vlanid -%>
+<% elsif vlan && interface.tag -%>
+<% real_if = interface.attached_to + '.' + interface.tag -%>
+<% elsif virtual && !vlan -%>
+<% real_if = interface.attached_to + ':' + interface.tag -%>
+<% elsif ! vlan || ! virtual -%>
+<% real_if = interface.identifier -%>
+<% end -%>
+auto <%= real_if %>
+iface <%= real_if %> inet <%= dhcp ? 'dhcp' : 'static' %>
+<% if virtual || vlan -%>
+hwaddress ether <%= interface.mac %>
+<% end -%>
+<% unless dhcp || subnet.nil? -%>
+    address <%= interface.ip %>
+    netmask <%= subnet.mask %>
+<% if !subnet.gateway.nil? && !subnet.gateway.empty? -%>
+    gateway <%= subnet.gateway %>
+<% end -%>
+<% end -%>
+<% if vlan -%>
+<%# SM: Not necessary for if.vlan style interface names %>
+    vlan-raw-device <%= interface.attached_to %>
+    <%# SM: VLAN interfaces should be attached to an untagged trunk port with a PVID %>
+    <%#     as such we want to wait for it to come up first, get its DHCP configuration %>
+    <%#     most pertinently MTU before upping the tagged interfaces.  That and having a %>
+    <%#     VLAN port come up first, we risk services starting too early and borking %>
+    pre-up sleep 5
+<% end -%>
+
+<% end -%>

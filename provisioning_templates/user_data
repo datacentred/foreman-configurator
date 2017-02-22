@@ -1,0 +1,16 @@
+#cloud-config
+hostname: <%= @host.shortname %>
+fqdn: <%= @host.name %>
+manage_etc_hosts: true
+
+puppet:
+  conf:
+    agent:
+      server: <%= @host.puppetmaster %>
+
+runcmd:
+  - /usr/sbin/groupmod -g 999 ubuntu
+  - /usr/sbin/usermod -g 999 ubuntu
+  - /opt/puppetlabs/bin/puppet agent --enable
+  - /opt/puppetlabs/bin/puppet agent --config /etc/puppet/puppet.conf --onetime --server <%= @host.puppetmaster %> --no-daemonize
+  - /usr/bin/wget --quiet --output-document=/var/log/foreman_built.log --no-check-certificate <%= foreman_url('built') %>

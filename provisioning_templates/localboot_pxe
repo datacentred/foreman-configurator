@@ -1,0 +1,23 @@
+<%#
+kind: PXELinux
+name: Community PXE Localboot
+%>
+
+<%# This template has special name (do not change it) and it is used for booting already provisioned hosts. %>
+
+DEFAULT menu
+PROMPT 0
+MENU TITLE PXE Menu
+TIMEOUT 20
+ONTIMEOUT local
+
+LABEL local
+     MENU LABEL (local)
+     MENU DEFAULT
+# Leave UEFI booting to the firmware
+<% if @host.facts['manufacturer'] == 'Quanta Computer Inc.' -%>
+     LOCALBOOT -1
+<% else -%>
+     com32 chain.c32
+     append hd0
+<% end %>

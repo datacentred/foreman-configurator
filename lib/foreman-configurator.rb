@@ -6,6 +6,9 @@ require 'foreman-configurator/models/template-kind'
 require 'foreman-configurator/models/provisioning-template'
 require 'foreman-configurator/models/medium'
 require 'foreman-configurator/models/operatingsystem'
+require 'foreman-configurator/models/smart-proxy'
+require 'foreman-configurator/models/domain'
+require 'foreman-configurator/models/subnet'
 
 module ForemanConfigurator
 
@@ -97,10 +100,10 @@ module ForemanConfigurator
     end
 
     # Commit any managed and modified resources
-    resources.select(&:modified).map(&:commit)
+    resources.select(&:modified).each(&:commit)
 
     # Purge any unmanaged resources
-    resources.reject(&:managed).map(&:delete)
+    resources.reject(&:managed).each(&:delete)
 
     # Return the managed resources
     resources.select(&:managed)
@@ -125,6 +128,9 @@ module ForemanConfigurator
     # Define the mapping of configuration items to models then perform
     # updates in order
     config_mapping = {
+      'smart_proxies'          => ForemanConfigurator::Models::SmartProxy,
+      'domains'                => ForemanConfigurator::Models::Domain,
+      'subnets'                => ForemanConfigurator::Models::Subnet,
       'architectures'          => ForemanConfigurator::Models::Architecture,
       'partition_tables'       => ForemanConfigurator::Models::PartitionTable,
       'provisioning_templates' => ForemanConfigurator::Models::ProvisioningTemplate,
